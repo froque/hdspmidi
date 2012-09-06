@@ -28,9 +28,11 @@
 #include <alsa/asoundlib.h>
 #include "HDSPMixerCard.h"
 #include <iostream>
+#include <libconfig.h++>
+#include "Channel.h"
 
 #define VERSION_STR 0.1
-#define CHARMAX 50
+
 //#define PHONES_CHANNEL 6    // this is stereo. See dest_map_h9652_ss
 #define OUT_CHANNEL 4       // again see dest_map_h9652_ss
 
@@ -40,24 +42,11 @@
 #define CC_DOWN_ROW 11
 #define CC_UP_ROW 14
 
-#define CHANNELS_NUM 7      // fixme: this define is temporary
+#define DEFAULT_FILE "channels.cfg"
 
 using namespace std;
 
 static volatile sig_atomic_t stop = 0;
-
-struct channel {
-    int idx;
-    char name[CHARMAX];
-    bool mute;
-    bool solo;
-    bool stereo;
-    bool input;
-    int left_map;
-    int right_map;
-    double volume;
-    double pan;
-};
 
 void search_card(HDSPMixerCard **hdsp_card){
     char *name, *shortname;
@@ -261,8 +250,8 @@ void send_control_normal(HDSPMixerCard *hdsp_card,int dst, struct channel ch){
     int right_value = 0;
 
     if(ch.mute==false){
-        left_value = ch.volume * (1 - ch.pan);
-        right_value = ch.volume * ch.pan;
+        left_value = ch.volume * (1 - ch.balance);
+        right_value = ch.volume * ch.balance;
     }
 //    send_controls(hdsp_card,dst,ch,left_value,right_value);
     if(ch.input){
@@ -298,7 +287,7 @@ void send_control_normal(HDSPMixerCard *hdsp_card,int dst, struct channel ch){
 //    }
 //}
 
-static void dump_event(const snd_seq_event_t *ev, struct channel *channels, HDSPMixerCard *hdsp_card)
+static void dump_event(const snd_seq_event_t *ev, Channels *ch, HDSPMixerCard *hdsp_card)
 {
     int midi_channel,midi_value,midi_param;
 
@@ -311,10 +300,10 @@ static void dump_event(const snd_seq_event_t *ev, struct channel *channels, HDSP
         midi_value = ev->data.control.value;
         midi_param = ev->data.control.param;
         if(midi_param == CC_VOL){
-            for (int k = 0 ; k< CHANNELS_NUM; k++){
-                if (midi_channel == channels[k].idx){
-                    channels[k].volume = midi_value * 65536.0 /CC_MAX ; // 65536  is the max in the driver. 127 is the max in midi
-                    send_control_normal(hdsp_card,OUT_CHANNEL,channels[k]);
+            for (int k = 0 ; k< ch->getNum(); k++){
+                if (midi_channel == ch->channels_data[k].idx){
+                    ch->channels_data[k].volume = midi_value * 65536.0 /CC_MAX ; // 65536  is the max in the driver. 127 is the max in midi
+                    send_control_normal(hdsp_card,OUT_CHANNEL,ch->channels_data[k]);
 //                    send_control_normal(hdsp_card,PHONES_CHANNEL,channels[k]);
                     break;
                 }
@@ -322,10 +311,10 @@ static void dump_event(const snd_seq_event_t *ev, struct channel *channels, HDSP
             break;
         }
         if(midi_param == CC_PAN){
-            for (int k = 0 ; k< CHANNELS_NUM; k++){
-                if (midi_channel == channels[k].idx){
-                    channels[k].pan = midi_value *1.0 /CC_MAX * 1; //  127 is the max in midi
-                    send_control_normal(hdsp_card,OUT_CHANNEL,channels[k]);
+            for (int k = 0 ; k< ch->getNum(); k++){
+                if (midi_channel == ch->channels_data[k].idx){
+                    ch->channels_data[k].balance = midi_value *1.0 /CC_MAX * 1; //  127 is the max in midi
+                    send_control_normal(hdsp_card,OUT_CHANNEL,ch->channels_data[k]);
 //                    send_control_normal(hdsp_card,PHONES_CHANNEL,channels[k]);
                     break;
                 }
@@ -333,15 +322,15 @@ static void dump_event(const snd_seq_event_t *ev, struct channel *channels, HDSP
             break;
         }
         if(midi_param == CC_DOWN_ROW){ // bottom row
-            for (int k = 0 ; k< CHANNELS_NUM; k++){
-                if (midi_channel == channels[k].idx){
+            for (int k = 0 ; k< ch->getNum(); k++){
+                if (midi_channel == ch->channels_data[k].idx){
                     if(midi_value == CC_MAX){
-                        channels[midi_channel].mute = true;
+                        ch->channels_data[midi_channel].mute = true;
                     } else {
-                        channels[midi_channel].mute = false;
+                        ch->channels_data[midi_channel].mute = false;
                     }
-                    cout << "mute channel " << midi_channel << " " << channels[midi_channel].mute << endl;
-                    send_control_normal(hdsp_card,OUT_CHANNEL,channels[k]);
+                    cout << "mute channel " << midi_channel << " " << ch->channels_data[midi_channel].mute << endl;
+                    send_control_normal(hdsp_card,OUT_CHANNEL,ch->channels_data[k]);
 //                    send_control_normal(hdsp_card,PHONES_CHANNEL,channels[k]);
                     break;
                 }
@@ -349,7 +338,7 @@ static void dump_event(const snd_seq_event_t *ev, struct channel *channels, HDSP
             break;
         }
 //        if(midi_param == CC_UP_ROW){ // upper row
-//            for (int k = 0 ; k< CHANNELS_NUM; k++){
+//            for (int k = 0 ; k< ch.getNum(); k++){
 //                if (midi_channel == channels[k].idx){
 //                    if(midi_value == CC_MAX){
 //                        channels[midi_channel].solo = true;
@@ -403,14 +392,15 @@ static void sighandler(int sig){
 
 int main(int argc, char *argv[])
 {
-    struct channel channels[] = \
-    {{ 0, "Mic 1",false, false, false, true,   0,  0, 0, 0.5},
-     { 1, "Mic 2",false, false, false, true,   1,  1, 0, 0.5},
-     { 2, "CD 1", false, false, true,  true,   2,  3, 0, 0.5},
-     { 3, "CD 2", false, false, true,  true,  24, 25, 0, 0.5},
-     { 4, "PC 1", false, false, true,  false,  0,  1, 0, 0.5},
-     { 5, "PC2 1",false, false, true,  false,  2,  3, 0, 0.5},
-     { 6, "DJ 1", false, false, true,  true,   4,  5, 0, 0.5}};
+    libconfig::Config cfg;
+    try{
+        cfg.readFile(DEFAULT_FILE);
+    }
+    catch (libconfig::ConfigException& e) {
+        return -1;
+    }
+    Channels channels;
+    channels.read(&cfg);
 
     snd_seq_addr_t *ports_out = NULL;
     snd_seq_addr_t *ports_in = NULL;
@@ -497,13 +487,15 @@ int main(int argc, char *argv[])
                 break;
             }
             if (event){
-                dump_event(event, channels,hdsp_card);
+                dump_event(event, &channels,hdsp_card);
             }
         } while (err > 0);
         if (stop){
             break;
         }
     }
+    channels.save(&cfg);
+    cfg.writeFile(DEFAULT_FILE);
     delete[] pfds;
     snd_seq_close(seq);
     return 0;

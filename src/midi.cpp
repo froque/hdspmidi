@@ -222,12 +222,12 @@ void send_midi_control(snd_seq_t* seq, int chn, int param,int value )  {
     }
 }
 
-void reset_midi(snd_seq_t* seq){
-    for(int k=0; k<=7; k++){
-        send_midi_control(seq, k, CC_VOL,0);
-        send_midi_control(seq, k, CC_PAN,64);
-        send_midi_control(seq, k, CC_DOWN_ROW,0);
-        send_midi_control(seq, k, CC_UP_ROW,0);
+void reset_midi(snd_seq_t* seq, Channels *ch){
+    for(int k=0; k<=ch->getNum(); k++){
+        send_midi_control(seq, k, CC_VOL,ch->channels_data[k].volume);
+        send_midi_control(seq, k, CC_PAN,ch->channels_data[k].balance);
+        send_midi_control(seq, k, CC_DOWN_ROW,ch->channels_data[k].mute);
+        send_midi_control(seq, k, CC_UP_ROW,ch->channels_data[k].solo);
     }
 }
 
@@ -473,7 +473,7 @@ int main(int argc, char *argv[])
     pfds = new pollfd[npfds];
 
     hdsp_card->resetMixer();
-    reset_midi(seq);
+    reset_midi(seq, &channels);
 
     while(true) {
         snd_seq_poll_descriptors(seq, pfds, npfds, POLLIN);

@@ -34,7 +34,7 @@
 
 #define VERSION_STR 0.1
 
-//#define PHONES_CHANNEL 6    // this is stereo. See dest_map_h9652_ss
+#define PHONES_CHANNEL 6    // this is stereo. See dest_map_h9652_ss
 #define OUT_CHANNEL 4       // again see dest_map_h9652_ss
 
 using namespace std;
@@ -99,29 +99,7 @@ void search_card(HDSPMixerCard **hdsp_card){
     free(name);
 }
 
-//void send_controls(HDSPMixerCard *hdsp_card,int dst, struct channel ch, int left_value, int right_value){
-//    if(ch.input){
-//        hdsp_card->setInput(ch.left_map, dst,left_value,right_value);
-//        if(ch.stereo){
-//            hdsp_card->setInput(ch.right_map, dst,left_value,right_value);
-//        }
-//    } else {
-//        hdsp_card->setInput(ch.left_map, dst,left_value,right_value);
-//        if(ch.stereo){
-//            hdsp_card->setInput(ch.right_map, dst,left_value,right_value);
-//        }
-//    }
-//}
-
-void send_control_normal(HDSPMixerCard *hdsp_card,int dst, struct channel ch){
-    int left_value = 0;
-    int right_value = 0;
-
-    if(ch.mute==false){
-        left_value = ch.volume * (1 - ch.balance);
-        right_value = ch.volume * ch.balance;
-    }
-//    send_controls(hdsp_card,dst,ch,left_value,right_value);
+void send_control(HDSPMixerCard *hdsp_card,int dst, struct channel ch, int left_value, int right_value){
     if(ch.input){
 #ifdef NO_RME
         hdsp_card->setInput(ch.left_map, dst,left_value,right_value);
@@ -143,25 +121,39 @@ void send_control_normal(HDSPMixerCard *hdsp_card,int dst, struct channel ch){
     }
 }
 
-//void send_control_solos(HDSPMixerCard *hdsp_card,struct channel ch[]){
-//    bool gsolo = false;
-//    for (int k=0; k< CHANNELS_NUM; k++){
-//        gsolo = ch[k].solo || gsolo;
-//    }
-//    if(gsolo == true){
-//        for (int k=0; k< CHANNELS_NUM; k++){
-//            if(ch[k].mute == true){
-//                send_controls(hdsp_card,PHONES_CHANNEL,ch[k],ch[k].volume,ch[k].volume);
-//            } else {
-//                send_controls(hdsp_card,PHONES_CHANNEL,ch[k],0,0);
-//            }
-//        }
-//    } else{
-//        for (int k=0; k< CHANNELS_NUM; k++){
-//            send_control_normal(hdsp_card,PHONES_CHANNEL,ch[k]);
-//        }
-//    }
-//}
+void control_normal(HDSPMixerCard *hdsp_card,int dst, struct channel ch){
+    int left_value = 0;
+    int right_value = 0;
+
+    if(ch.mute==false){
+        left_value = ch.volume * (1 - ch.balance);
+        right_value = ch.volume * ch.balance;
+    }
+    send_control(hdsp_card,dst,ch,left_value,right_value);
+}
+
+void control_solos(HDSPMixerCard *hdsp_card,Channels *chs){
+    bool gsolo = false;
+
+    // determine if any channel is set to solo, because affects others.
+    for (int k=0; k< chs->getNum(); k++){
+        gsolo = chs->channels_data[k].solo || gsolo;
+    }
+
+    if(gsolo == true){
+        for (int k=0; k< chs->getNum(); k++){
+            if(chs->channels_data[k].solo == true){
+                send_control(hdsp_card,PHONES_CHANNEL,chs->channels_data[k],ZERO_DB,ZERO_DB);
+            } else {
+                send_control(hdsp_card,PHONES_CHANNEL,chs->channels_data[k],0,0);
+            }
+        }
+    } else{
+        for (int k=0; k< chs->getNum(); k++){
+            control_normal(hdsp_card,PHONES_CHANNEL,chs->channels_data[k]);
+        }
+    }
+}
 
 static void dump_event(const snd_seq_event_t *ev, Channels *ch, HDSPMixerCard *hdsp_card)
 {
@@ -179,8 +171,8 @@ static void dump_event(const snd_seq_event_t *ev, Channels *ch, HDSPMixerCard *h
             for (int k = 0 ; k< ch->getNum(); k++){
                 if (midi_channel == ch->channels_data[k].idx){
                     ch->channels_data[k].volume = midi_value * 65536.0 /CC_MAX ; // 65536  is the max in the driver. 127 is the max in midi
-                    send_control_normal(hdsp_card,OUT_CHANNEL,ch->channels_data[k]);
-//                    send_control_normal(hdsp_card,PHONES_CHANNEL,channels[k]);
+                    control_normal(hdsp_card,OUT_CHANNEL,ch->channels_data[k]);
+                    control_solos(hdsp_card,ch);
                     break;
                 }
             }
@@ -190,8 +182,8 @@ static void dump_event(const snd_seq_event_t *ev, Channels *ch, HDSPMixerCard *h
             for (int k = 0 ; k< ch->getNum(); k++){
                 if (midi_channel == ch->channels_data[k].idx){
                     ch->channels_data[k].balance = midi_value *1.0 /CC_MAX * 1; //  127 is the max in midi
-                    send_control_normal(hdsp_card,OUT_CHANNEL,ch->channels_data[k]);
-//                    send_control_normal(hdsp_card,PHONES_CHANNEL,channels[k]);
+                    control_normal(hdsp_card,OUT_CHANNEL,ch->channels_data[k]);
+                    control_solos(hdsp_card,ch);
                     break;
                 }
             }
@@ -206,29 +198,30 @@ static void dump_event(const snd_seq_event_t *ev, Channels *ch, HDSPMixerCard *h
                         ch->channels_data[midi_channel].mute = false;
                     }
                     cout << "mute channel " << midi_channel << " " << ch->channels_data[midi_channel].mute << endl;
-                    send_control_normal(hdsp_card,OUT_CHANNEL,ch->channels_data[k]);
-//                    send_control_normal(hdsp_card,PHONES_CHANNEL,channels[k]);
+                    control_normal(hdsp_card,OUT_CHANNEL,ch->channels_data[k]);
+                    control_solos(hdsp_card,ch);
                     break;
                 }
             }
             break;
         }
-//        if(midi_param == CC_UP_ROW){ // upper row
-//            for (int k = 0 ; k< ch.getNum(); k++){
-//                if (midi_channel == channels[k].idx){
-//                    if(midi_value == CC_MAX){
-//                        channels[midi_channel].solo = true;
-//                    } else {
-//                        channels[midi_channel].solo = false;
-//                    }
-//                    cout << "solo channel " << midi_channel << " " << channels[midi_channel].mute << endl;
-//                    //                    send_control(hdsp_card,channels[k]);
-//                    //                    send_control_solos(hdsp_card,channels);
-//                    break;
-//                }
-//            }
-//            break;
-//        }
+        if(midi_param == CC_UP_ROW){ // upper row
+            for (int k = 0 ; k< ch->getNum(); k++){
+                if (midi_channel == ch->channels_data[k].idx){
+                    if(midi_value == CC_MAX){
+                        ch->channels_data[midi_channel].solo = true;
+                    } else {
+                        ch->channels_data[midi_channel].solo = false;
+                    }
+                    control_solos(hdsp_card,ch);
+                    cout << "solo channel " << midi_channel << " " << ch->channels_data[midi_channel].mute << endl;
+                    //                    send_control(hdsp_card,channels[k]);
+                    //                    send_control_solos(hdsp_card,channels);
+                    break;
+                }
+            }
+            break;
+        }
         break;
     case SND_SEQ_EVENT_PGMCHANGE:
         printf("Program change         %2d, program %d\n", ev->data.control.channel, ev->data.control.value);

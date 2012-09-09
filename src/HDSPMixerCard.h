@@ -41,6 +41,9 @@
 #define HDSPeAIO 12
 #define HDSP_AES 13 /* both HDSP AES32 and HDSPe AES */
 
+#define RME_MAX 65536
+#define ZERO_DB 32768
+
 /*! \brief Card Management
  *
  *  Manages HDSP cards

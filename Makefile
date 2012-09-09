@@ -11,8 +11,8 @@
 CC            = gcc
 CXX           = g++
 DEFINES       = 
-CFLAGS        = -m64 -pipe -O2 -Wall -W  $(DEFINES)
-CXXFLAGS      = -m64 -pipe -O2 -Wall -W  $(DEFINES)
+CFLAGS        = -m64 -pipe -g -O0 -Wall -W  $(DEFINES)
+CXXFLAGS      = -m64 -pipe -g -O0 -Wall -W  $(DEFINES)
 INCPATH       = -Isrc -I.
 LINK          = g++
 LFLAGS        = -m64 -Wl,-O1

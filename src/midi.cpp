@@ -30,17 +30,13 @@
 #include <iostream>
 #include <libconfig.h++>
 #include "Channel.h"
+#include "midicontroller.h"
 
 #define VERSION_STR 0.1
 
 //#define PHONES_CHANNEL 6    // this is stereo. See dest_map_h9652_ss
 #define OUT_CHANNEL 4       // again see dest_map_h9652_ss
 
-#define CC_MAX 127
-#define CC_VOL 7
-#define CC_PAN 10
-#define CC_DOWN_ROW 11
-#define CC_UP_ROW 14
 
 #define DEFAULT_FILE "channels.cfg"
 
@@ -104,131 +100,6 @@ void search_card(HDSPMixerCard **hdsp_card){
         }
     }
     free(name);
-}
-
-// fixme: is this function really needed?
-/* prints an error message to stderr, and dies */
-static void fatal(const char *msg, ...){
-    va_list ap;
-
-    va_start(ap, msg);
-    vfprintf(stderr, msg, ap);
-    va_end(ap);
-    fputc('\n', stderr);
-    exit(EXIT_FAILURE);
-}
-
-/* memory allocation error handling */
-static void check_mem(void *p){
-    if (!p)
-        fatal("Out of memory");
-}
-
-/* error handling for ALSA functions */
-static void check_snd(const char *operation, int err){
-    if (err < 0)
-        fatal("Cannot %s - %s", operation, snd_strerror(err));
-}
-
-static void init_seq(snd_seq_t **seq){
-    int err;
-
-    /* open sequencer */
-    err = snd_seq_open(seq, "default", SND_SEQ_OPEN_DUPLEX, 0);
-    check_snd("open sequencer", err);
-
-    /* set our client's name */
-    err = snd_seq_set_client_name(*seq, "hdspmidi");
-    check_snd("set client name", err);
-}
-
-/* parses one or more port addresses from the string */
-static int parse_ports(snd_seq_t *seq,snd_seq_addr_t **ports, const char *arg){
-    char *buf, *s, *port_name;
-    int err;
-    int port_count;
-
-    cout << "parse_ports "<< arg << endl;
-
-    /* make a copy of the string because we're going to modify it */
-    buf = strdup(arg);
-    check_mem(buf);
-
-    for (port_name = s = buf; s; port_name = s + 1) {
-        /* Assume that ports are separated by commas.  We don't use
-         * spaces because those are valid in client names. */
-        s = strchr(port_name, ',');
-        if (s){
-            *s = '\0';
-        }
-
-        ++port_count;
-        *ports = (snd_seq_addr_t*) realloc( *ports, port_count * sizeof(snd_seq_addr_t));
-
-        check_mem(ports);
-
-        err = snd_seq_parse_address(seq, ports[port_count - 1], port_name);
-        if (err < 0)
-            fatal("Invalid port %s - %s", port_name, snd_strerror(err));
-    }
-
-    free(buf);
-    return port_count;
-}
-
-static void create_port(snd_seq_t *seq){
-    int err;
-
-    err = snd_seq_create_simple_port(seq, "out",
-                                     SND_SEQ_PORT_CAP_WRITE |
-                                     SND_SEQ_PORT_CAP_SUBS_WRITE,
-                                     SND_SEQ_PORT_TYPE_MIDI_GENERIC |
-                                     SND_SEQ_PORT_TYPE_APPLICATION);
-    check_snd("create port", err);
-
-    err = snd_seq_create_simple_port(seq, "in",
-                                     SND_SEQ_PORT_CAP_READ |
-                                     SND_SEQ_PORT_CAP_SUBS_READ,
-                                     SND_SEQ_PORT_TYPE_APPLICATION);
-    check_snd("create port", err);
-}
-
-static void connect_ports(snd_seq_t *seq,snd_seq_addr_t *ports_out,int port_count_out,snd_seq_addr_t *ports_in,int port_count_in){
-    int i, err;
-
-    for (i = 0; i < port_count_out; ++i) {
-        err = snd_seq_connect_from(seq, 0, ports_out[i].client, ports_out[i].port);
-        if (err < 0)
-            fatal("Cannot connect from port %d:%d - %s",
-                  ports_out[i].client, ports_out[i].port, snd_strerror(err));
-    }
-    for (i = 0; i < port_count_in; ++i) {
-        err = snd_seq_connect_to(seq, 0, ports_in[i].client, ports_in[i].port);
-        if (err < 0)
-            fatal("Cannot connect from port %d:%d - %s",
-                  ports_in[i].client, ports_in[i].port, snd_strerror(err));
-    }
-}
-
-void send_midi_control(snd_seq_t* seq, int chn, int param,int value )  {
-    snd_seq_event_t ev;
-    snd_seq_ev_clear(&ev);
-    snd_seq_ev_set_subs(&ev);
-    snd_seq_ev_set_controller(&ev, chn, param, value);
-    snd_seq_ev_set_direct(&ev);
-    int err = snd_seq_event_output_direct(seq, &ev);
-    if (err < 0){
-        cerr<<"Could not send MIDI control change: "<<snd_strerror(err)<<endl;
-    }
-}
-
-void reset_midi(snd_seq_t* seq, Channels *ch){
-    for(int k=0; k<=ch->getNum(); k++){
-        send_midi_control(seq, k, CC_VOL,ch->channels_data[k].volume);
-        send_midi_control(seq, k, CC_PAN,ch->channels_data[k].balance);
-        send_midi_control(seq, k, CC_DOWN_ROW,ch->channels_data[k].mute);
-        send_midi_control(seq, k, CC_UP_ROW,ch->channels_data[k].solo);
-    }
 }
 
 //void send_controls(HDSPMixerCard *hdsp_card,int dst, struct channel ch, int left_value, int right_value){
@@ -402,11 +273,7 @@ int main(int argc, char *argv[])
     Channels channels;
     channels.read(&cfg);
 
-    snd_seq_addr_t *ports_out = NULL;
-    snd_seq_addr_t *ports_in = NULL;
-    int port_count_out = 0;
-    int port_count_in = 0;
-    snd_seq_t *seq = NULL;
+    MidiController midicontroller;
     HDSPMixerCard *hdsp_card = NULL;
     static const char short_options[] = "hVo:i:";
     static const struct option long_options[] = {
@@ -425,8 +292,6 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
 
-    init_seq(&seq);
-
     while ((c = getopt_long(argc, argv, short_options,
                             long_options, NULL)) != -1) {
         switch (c) {
@@ -437,10 +302,10 @@ int main(int argc, char *argv[])
             version();
             return 0;
         case 'o':
-            port_count_out = parse_ports(seq,&ports_out,optarg);
+            midicontroller.parse_ports_out(optarg);
             break;
         case 'i':
-            port_count_in = parse_ports(seq,&ports_in,optarg);
+            midicontroller.parse_ports_in(optarg);
             break;
         default:
             help(argv[0]);
@@ -452,37 +317,31 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-
-    create_port(seq);
-    connect_ports(seq,ports_out, port_count_out, ports_in, port_count_in);
-
-    err = snd_seq_nonblock(seq, 1);
-    check_snd("set nonblock mode", err);
-
-    if (port_count_out > 0)
-        cout << "Waiting for data.";
-    else
-        cout << "Waiting for data at port " << snd_seq_client_id(seq) << ":0.";
-    cout << " Press Ctrl+C to end." << endl;
-    cout << "Source  Event                  Ch  Data" << endl;
+    midicontroller.connect_ports();
 
     signal(SIGINT, sighandler);
     signal(SIGTERM, sighandler);
 
-    npfds = snd_seq_poll_descriptors_count(seq, POLLIN);
+    npfds = snd_seq_poll_descriptors_count(midicontroller.seq, POLLIN);
     pfds = new pollfd[npfds];
 
+    // reset all to 0.
     hdsp_card->resetMixer();
-    reset_midi(seq, &channels);
+    // restore channels gains from file
+    for (int k = 0 ; k< channels.getNum(); k++){
+        send_control_normal(hdsp_card,OUT_CHANNEL,channels.channels_data[k]);
+    }
+    // restore channels midi from file
+    midicontroller.restore_midi(&channels);
 
     while(true) {
-        snd_seq_poll_descriptors(seq, pfds, npfds, POLLIN);
+        snd_seq_poll_descriptors(midicontroller.seq, pfds, npfds, POLLIN);
         if (poll(pfds, npfds, -1) < 0){
             break;
         }
         do {
             snd_seq_event_t *event;
-            err = snd_seq_event_input(seq, &event);
+            err = snd_seq_event_input(midicontroller.seq, &event);
             if (err < 0){
                 break;
             }
@@ -497,6 +356,6 @@ int main(int argc, char *argv[])
     channels.save(&cfg);
     cfg.writeFile(DEFAULT_FILE);
     delete[] pfds;
-    snd_seq_close(seq);
+
     return 0;
 }

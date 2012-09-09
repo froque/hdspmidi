@@ -27,6 +27,8 @@ private:
     snd_seq_addr_t *ports_in;
     int port_count_out;
     int port_count_in;
+    int receiver;
+    int sender;
 };
 
 #endif // MIDICONTROLLER_H

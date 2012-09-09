@@ -44,18 +44,21 @@ MidiController::MidiController()
     err = snd_seq_set_client_name(seq, "hdspmidi");
     check_snd("set client name", err);
 
-    err = snd_seq_create_simple_port(seq, "out",
+    err = snd_seq_create_simple_port(seq, "receiver",
                                      SND_SEQ_PORT_CAP_WRITE |
                                      SND_SEQ_PORT_CAP_SUBS_WRITE,
                                      SND_SEQ_PORT_TYPE_MIDI_GENERIC |
                                      SND_SEQ_PORT_TYPE_APPLICATION);
     check_snd("create port", err);
+    receiver = err;
 
-    err = snd_seq_create_simple_port(seq, "in",
+
+    err = snd_seq_create_simple_port(seq, "sender",
                                      SND_SEQ_PORT_CAP_READ |
                                      SND_SEQ_PORT_CAP_SUBS_READ,
                                      SND_SEQ_PORT_TYPE_APPLICATION);
     check_snd("create port", err);
+    sender = err;
 
     err = snd_seq_nonblock(seq, 1);
     check_snd("set nonblock mode", err);
@@ -91,13 +94,13 @@ void MidiController::connect_ports(){
     int i, err;
 
     for (i = 0; i < port_count_out; ++i) {
-        err = snd_seq_connect_from(seq, 0, ports_out[i].client, ports_out[i].port);
+        err = snd_seq_connect_from(seq, receiver, ports_out[i].client, ports_out[i].port);
         if (err < 0)
             fatal("Cannot connect from port %d:%d - %s",
                   ports_out[i].client, ports_out[i].port, snd_strerror(err));
     }
     for (i = 0; i < port_count_in; ++i) {
-        err = snd_seq_connect_to(seq, 0, ports_in[i].client, ports_in[i].port);
+        err = snd_seq_connect_to(seq, sender, ports_in[i].client, ports_in[i].port);
         if (err < 0)
             fatal("Cannot connect from port %d:%d - %s",
                   ports_in[i].client, ports_in[i].port, snd_strerror(err));

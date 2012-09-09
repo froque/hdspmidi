@@ -37,9 +37,6 @@
 //#define PHONES_CHANNEL 6    // this is stereo. See dest_map_h9652_ss
 #define OUT_CHANNEL 4       // again see dest_map_h9652_ss
 
-
-#define DEFAULT_FILE "channels.cfg"
-
 using namespace std;
 
 static volatile sig_atomic_t stop = 0;
@@ -126,14 +123,22 @@ void send_control_normal(HDSPMixerCard *hdsp_card,int dst, struct channel ch){
     }
 //    send_controls(hdsp_card,dst,ch,left_value,right_value);
     if(ch.input){
+#ifdef NO_RME
         hdsp_card->setInput(ch.left_map, dst,left_value,right_value);
+#endif //NO_RME
         if(ch.stereo){
+#ifdef NO_RME
             hdsp_card->setInput(ch.right_map, dst,left_value,right_value);
+#endif //NO_RME
         }
     } else {
+#ifdef NO_RME
         hdsp_card->setPlayback(ch.left_map, dst,left_value,right_value);
+#endif //NO_RME
         if(ch.stereo){
+#ifdef NO_RME
             hdsp_card->setPlayback(ch.right_map, dst,left_value,right_value);
+#endif //NO_RME
         }
     }
 }
@@ -245,18 +250,6 @@ static void dump_event(const snd_seq_event_t *ev, Channels *ch, HDSPMixerCard *h
     }
 }
 
-static void help(const char *argv0){
-    cout << "Usage: " << argv0 << "[options]\n"
-            "\nAvailable options:\n"
-            "  -h,--help                  this help\n"
-            "  -V,--version               show version\n"
-            "  -o,--portout=client:port,...  source port(s)" << endl;
-}
-
-static void version(void){
-    cout << "version " << VERSION_STR << endl;
-}
-
 static void sighandler(int sig){
     stop = 1;
 }
@@ -264,59 +257,46 @@ static void sighandler(int sig){
 int main(int argc, char *argv[])
 {
     libconfig::Config cfg;
-    try{
-        cfg.readFile(DEFAULT_FILE);
-    }
-    catch (libconfig::ConfigException& e) {
-        return -1;
-    }
     Channels channels;
-    channels.read(&cfg);
-
     MidiController midicontroller;
     HDSPMixerCard *hdsp_card = NULL;
-    static const char short_options[] = "hVo:i:";
-    static const struct option long_options[] = {
-        {"help", 0, NULL, 'h'},
-        {"version", 0, NULL, 'V'},
-        {"portout", 1, NULL, 'o'},
-        {"portin", 1, NULL, 'i'},
-    };
     struct pollfd *pfds = NULL;
     int npfds = 0;
-    int c, err;
+    int err;
+    const char *port_out;
+    const char *port_in;
 
-    search_card(&hdsp_card);
-    if (hdsp_card == NULL) {
-        cout << "No RME cards found." << endl;
+    // check if config file was specified
+    if (argc!=2){
+        cout << "This programs needs a configuration file" << endl;
         exit(EXIT_FAILURE);
     }
 
-    while ((c = getopt_long(argc, argv, short_options,
-                            long_options, NULL)) != -1) {
-        switch (c) {
-        case 'h':
-            help(argv[0]);
-            return 0;
-        case 'V':
-            version();
-            return 0;
-        case 'o':
-            midicontroller.parse_ports_out(optarg);
-            break;
-        case 'i':
-            midicontroller.parse_ports_in(optarg);
-            break;
-        default:
-            help(argv[0]);
-            return 1;
-        }
-    }
-    if (optind < argc) {
-        help(argv[0]);
-        return 1;
+    // Search and initialize RME card.
+    search_card(&hdsp_card);
+    if (hdsp_card == NULL) {
+        cout << "No RME cards found." << endl;
+#ifdef NO_RME
+        exit(EXIT_FAILURE);
+#endif //NO_RME
     }
 
+    try{
+        cfg.readFile(argv[1]);
+
+        libconfig::Setting& si = cfg.lookup("midi_in");
+        port_in = si;
+        libconfig::Setting& so = cfg.lookup("midi_out");
+        port_out = so;
+    }
+    catch (libconfig::ConfigException& e) {
+        cout << "error readind config file" << endl;
+        exit(EXIT_FAILURE);
+    }
+
+    channels.read(&cfg);
+    midicontroller.parse_ports_out(port_out);
+    midicontroller.parse_ports_in(port_in);
     midicontroller.connect_ports();
 
     signal(SIGINT, sighandler);
@@ -325,12 +305,14 @@ int main(int argc, char *argv[])
     npfds = snd_seq_poll_descriptors_count(midicontroller.seq, POLLIN);
     pfds = new pollfd[npfds];
 
+#ifdef NO_RME
     // reset all to 0.
     hdsp_card->resetMixer();
     // restore channels gains from file
     for (int k = 0 ; k< channels.getNum(); k++){
         send_control_normal(hdsp_card,OUT_CHANNEL,channels.channels_data[k]);
     }
+#endif //NO_RME
     // restore channels midi from file
     midicontroller.restore_midi(&channels);
 
@@ -354,7 +336,7 @@ int main(int argc, char *argv[])
         }
     }
     channels.save(&cfg);
-    cfg.writeFile(DEFAULT_FILE);
+    cfg.writeFile(argv[1]);
     delete[] pfds;
 
     return 0;

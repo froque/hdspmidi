@@ -1,5 +1,6 @@
 #include "bridge.h"
 #include <iostream>
+#include <cmath>
 
 using namespace std;
 
@@ -11,6 +12,22 @@ Bridge::Bridge()
 Bridge::~Bridge()
 {
     delete hdsp_card;
+}
+
+void Bridge::vegas()
+{
+    bool b = false;
+    for (double phase = 0; phase < 5*2*3.14 ; phase +=0.2 ){
+        for (int k=0;k<8;k++){
+            midicontroller.send_midi_CC(k,CC_VOL,CC_MAX/2.0 * sin(2*3.14*k/8 + phase) + CC_MAX/2.0);
+            midicontroller.send_midi_CC(k,CC_PAN,CC_MAX/2.0 * sin(2*3.14*k/8 + phase) + CC_MAX/2.0);
+            midicontroller.send_midi_CC(k,CC_DOWN_ROW,b?CC_MAX:0);
+            midicontroller.send_midi_CC(k,CC_UP_ROW,b?0:CC_MAX);
+            b = !b;
+            usleep(5000);
+        }
+        b = !b;
+    }
 }
 
 void Bridge::restore(void)

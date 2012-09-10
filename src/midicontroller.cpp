@@ -74,8 +74,8 @@ void MidiController::restore_midi( Channels *ch){
     for(int k=0; k<ch->getNum(); k++){
         send_midi_CC(k, CC_VOL,ch->channels_data[k].volume /RME_MAX * CC_MAX);
         send_midi_CC(k, CC_PAN,ch->channels_data[k].balance *CC_MAX);
-        send_midi_CC(k, CC_DOWN_ROW,ch->channels_data[k].mute);
-        send_midi_CC(k, CC_UP_ROW,ch->channels_data[k].solo);
+        send_midi_CC(k, CC_DOWN_ROW,ch->channels_data[k].mute? CC_MAX:0);
+        send_midi_CC(k, CC_UP_ROW,ch->channels_data[k].solo? CC_MAX:0);
     }
 }
 

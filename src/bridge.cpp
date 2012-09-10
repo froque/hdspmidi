@@ -23,6 +23,7 @@ void Bridge::restore(void)
     for (int k = 0 ; k< channels.getNum(); k++){
         control_normal(main,channels.channels_data[k]);
     }
+    control_solos();
 #endif //NO_RME
     // restore channels midi from file
     midicontroller.restore_midi(&channels);
@@ -101,7 +102,7 @@ void Bridge::dump_event(const snd_seq_event_t *ev)
         if(midi_param == CC_VOL){
             for (int k = 0 ; k< channels.getNum(); k++){
                 if (midi_channel == channels.channels_data[k].idx){
-                    channels.channels_data[k].volume = midi_value * 65536.0 /CC_MAX ; // 65536  is the max in the driver. 127 is the max in midi
+                    channels.channels_data[k].volume = midi_value * RME_MAX *1.0 /CC_MAX ; // 65536  is the max in the driver. 127 is the max in midi
                     control_normal(main,channels.channels_data[k]);
                     control_solos();
                     break;

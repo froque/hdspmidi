@@ -10,7 +10,7 @@ class Bridge
 public:
     Bridge();
     ~Bridge();
-    void restore();
+    void restore(void);
     void send_control(int dst, struct channel ch, int left_value, int right_value);
     void control_normal(int dst, struct channel ch);
     void control_solos();

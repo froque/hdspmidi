@@ -11,12 +11,12 @@
 CC            = gcc
 CXX           = g++
 DEFINES       = 
-CFLAGS        = -m64 -pipe -g -O0 -Wall -W  $(DEFINES)
-CXXFLAGS      = -m64 -pipe -g -O0 -Wall -W  $(DEFINES)
+CFLAGS        = -pipe -g -O0 -Wall -W  $(DEFINES)
+CXXFLAGS      = -pipe -g -O0 -Wall -W  $(DEFINES)
 INCPATH       = -Isrc -I.
 LINK          = g++
-LFLAGS        = -m64 -Wl,-O1
-LIBS          = $(SUBLIBS)  -L/usr/lib/x86_64-linux-gnu -lasound -lconfig++ -lpthread 
+LFLAGS        = -Wl,-O1
+LIBS          = $(SUBLIBS) -lasound -lconfig++ -lpthread
 AR            = ar cqs
 RANLIB        = 
 TAR           = tar -cf

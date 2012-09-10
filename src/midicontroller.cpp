@@ -1,5 +1,6 @@
 #include "midicontroller.h"
 #include <iostream>
+#include "HDSPMixerCard.h"
 
 using namespace std;
 
@@ -70,9 +71,9 @@ MidiController::~MidiController()
 }
 
 void MidiController::restore_midi( Channels *ch){
-    for(int k=0; k<=ch->getNum(); k++){
-        send_midi_CC(k, CC_VOL,ch->channels_data[k].volume);
-        send_midi_CC(k, CC_PAN,ch->channels_data[k].balance);
+    for(int k=0; k<ch->getNum(); k++){
+        send_midi_CC(k, CC_VOL,ch->channels_data[k].volume /RME_MAX * CC_MAX);
+        send_midi_CC(k, CC_PAN,ch->channels_data[k].balance *CC_MAX);
         send_midi_CC(k, CC_DOWN_ROW,ch->channels_data[k].mute);
         send_midi_CC(k, CC_UP_ROW,ch->channels_data[k].solo);
     }
@@ -83,6 +84,7 @@ void MidiController::send_midi_CC(int chn, int param, int value )  {
     snd_seq_ev_clear(&ev);
     snd_seq_ev_set_subs(&ev);
     snd_seq_ev_set_controller(&ev, chn, param, value);
+    snd_seq_ev_set_source(&ev,sender);
     snd_seq_ev_set_direct(&ev);
     int err = snd_seq_event_output_direct(seq, &ev);
     if (err < 0){

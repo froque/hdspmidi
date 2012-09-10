@@ -91,11 +91,8 @@ void Bridge::dump_event(const snd_seq_event_t *ev)
 {
     int midi_channel,midi_value,midi_param;
 
-    //    printf("%3d:%-3d \n", ev->source.client, ev->source.port);
     switch (ev->type) {
     case SND_SEQ_EVENT_CONTROLLER:
-        //        printf("Control change         %2d, controller %d, value %d\n",
-        //               ev->data.control.channel, ev->data.control.param, ev->data.control.value);
         midi_channel = ev->data.control.channel;
         midi_value = ev->data.control.value;
         midi_param = ev->data.control.param;
@@ -129,7 +126,6 @@ void Bridge::dump_event(const snd_seq_event_t *ev)
                     } else {
                         channels.channels_data[midi_channel].mute = false;
                     }
-                    cout << "mute channel " << midi_channel << " " << channels.channels_data[midi_channel].mute << endl;
                     control_normal(main,channels.channels_data[k]);
                     control_solos();
                     break;
@@ -146,9 +142,6 @@ void Bridge::dump_event(const snd_seq_event_t *ev)
                         channels.channels_data[midi_channel].solo = false;
                     }
                     control_solos();
-                    cout << "solo channel " << midi_channel << " " << channels.channels_data[midi_channel].mute << endl;
-                    //                    send_control(hdsp_card,channels[k]);
-                    //                    send_control_solos(hdsp_card,channels);
                     break;
                 }
             }

@@ -123,8 +123,6 @@ int MidiController::parse_ports(snd_seq_addr_t **ports, const char *arg){
     int err;
     int port_count =0;
 
-    cout << "parse_ports "<< arg << endl;
-
     /* make a copy of the string because we're going to modify it */
     buf = strdup(arg);
     check_mem(buf);

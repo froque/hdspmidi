@@ -31,11 +31,7 @@
 #include <libconfig.h++>
 #include "Channel.h"
 #include "midicontroller.h"
-
-#define VERSION_STR 0.1
-
-#define PHONES_CHANNEL 6    // this is stereo. See dest_map_h9652_ss
-#define OUT_CHANNEL 4       // again see dest_map_h9652_ss
+#include "bridge.h"
 
 using namespace std;
 
@@ -51,45 +47,34 @@ void search_card(HDSPMixerCard **hdsp_card){
         }
         snd_card_get_longname(card, &name);
         snd_card_get_name(card, &shortname);
-//        cout << "Card " << card << ":" << name << endl;
         if (!strncmp(name, "RME Hammerfall DSP + Multiface", 30)) {
-//            cout << "Multiface found!" << endl;
             *hdsp_card = new HDSPMixerCard(Multiface, card, shortname);
             break;
         } else if (!strncmp(name, "RME Hammerfall DSP + Digiface", 29)) {
-//            cout << "Digiface found!" << endl;
             *hdsp_card = new HDSPMixerCard(Digiface, card, shortname);
             break;
         } else if (!strncmp(name, "RME Hammerfall DSP + RPM", 24)) {
-//            cout << "RPM found!" << endl;
             *hdsp_card = new HDSPMixerCard(RPM, card, shortname);
             break;
         } else if (!strncmp(name, "RME Hammerfall HDSP 9652", 24)) {
-//            cout << "HDSP 9652 found!" << endl;
             *hdsp_card = new HDSPMixerCard(H9652, card, shortname);
             break;
         } else if (!strncmp(name, "RME Hammerfall HDSP 9632", 24)) {
-//            cout << "HDSP 9632 found!" << endl;
             *hdsp_card = new HDSPMixerCard(H9632, card, shortname);
             break;
         } else if (!strncmp(name, "RME MADIface", 12)) {
-//            cout << "RME MADIface found!" << endl;
             *hdsp_card = new HDSPMixerCard(HDSPeMADI, card, shortname);
             break;
         } else if (!strncmp(name, "RME MADI", 8)) {
-//            cout << "RME MADI found!" << endl;
             *hdsp_card = new HDSPMixerCard(HDSPeMADI, card, shortname);
             break;
         } else if (!strncmp(name, "RME AES32", 8)) {
-//            cout << "RME AES32 or HDSPe AES found!" << endl;
             *hdsp_card = new HDSPMixerCard(HDSP_AES, card, shortname);
             break;
         } else if (!strncmp(name, "RME RayDAT", 10)) {
-//            cout << "RME RayDAT found!" << endl;
             *hdsp_card = new HDSPMixerCard(HDSPeRayDAT, card, shortname);
             break;
         } else if (!strncmp(name, "RME AIO", 7)) {
-//            cout << "RME AIO found!" << endl;
             *hdsp_card = new HDSPMixerCard(HDSPeAIO, card, shortname);
             break;
         } else if (!strncmp(name, "RME Hammerfall DSP", 18)) {
@@ -99,149 +84,6 @@ void search_card(HDSPMixerCard **hdsp_card){
     free(name);
 }
 
-void send_control(HDSPMixerCard *hdsp_card,int dst, struct channel ch, int left_value, int right_value){
-    if(ch.input){
-#ifdef NO_RME
-        hdsp_card->setInput(ch.left_map, dst,left_value,right_value);
-#endif //NO_RME
-        if(ch.stereo){
-#ifdef NO_RME
-            hdsp_card->setInput(ch.right_map, dst,left_value,right_value);
-#endif //NO_RME
-        }
-    } else {
-#ifdef NO_RME
-        hdsp_card->setPlayback(ch.left_map, dst,left_value,right_value);
-#endif //NO_RME
-        if(ch.stereo){
-#ifdef NO_RME
-            hdsp_card->setPlayback(ch.right_map, dst,left_value,right_value);
-#endif //NO_RME
-        }
-    }
-}
-
-void control_normal(HDSPMixerCard *hdsp_card,int dst, struct channel ch){
-    int left_value = 0;
-    int right_value = 0;
-
-    if(ch.mute==false){
-        left_value = ch.volume * (1 - ch.balance);
-        right_value = ch.volume * ch.balance;
-    }
-    send_control(hdsp_card,dst,ch,left_value,right_value);
-}
-
-void control_solos(HDSPMixerCard *hdsp_card,Channels *chs){
-    bool gsolo = false;
-
-    // determine if any channel is set to solo, because affects others.
-    for (int k=0; k< chs->getNum(); k++){
-        gsolo = chs->channels_data[k].solo || gsolo;
-    }
-
-    if(gsolo == true){
-        for (int k=0; k< chs->getNum(); k++){
-            if(chs->channels_data[k].solo == true){
-                send_control(hdsp_card,PHONES_CHANNEL,chs->channels_data[k],ZERO_DB,ZERO_DB);
-            } else {
-                send_control(hdsp_card,PHONES_CHANNEL,chs->channels_data[k],0,0);
-            }
-        }
-    } else{
-        for (int k=0; k< chs->getNum(); k++){
-            control_normal(hdsp_card,PHONES_CHANNEL,chs->channels_data[k]);
-        }
-    }
-}
-
-static void dump_event(const snd_seq_event_t *ev, Channels *ch, HDSPMixerCard *hdsp_card)
-{
-    int midi_channel,midi_value,midi_param;
-
-    //    printf("%3d:%-3d \n", ev->source.client, ev->source.port);
-    switch (ev->type) {
-    case SND_SEQ_EVENT_CONTROLLER:
-        //        printf("Control change         %2d, controller %d, value %d\n",
-        //               ev->data.control.channel, ev->data.control.param, ev->data.control.value);
-        midi_channel = ev->data.control.channel;
-        midi_value = ev->data.control.value;
-        midi_param = ev->data.control.param;
-        if(midi_param == CC_VOL){
-            for (int k = 0 ; k< ch->getNum(); k++){
-                if (midi_channel == ch->channels_data[k].idx){
-                    ch->channels_data[k].volume = midi_value * 65536.0 /CC_MAX ; // 65536  is the max in the driver. 127 is the max in midi
-                    control_normal(hdsp_card,OUT_CHANNEL,ch->channels_data[k]);
-                    control_solos(hdsp_card,ch);
-                    break;
-                }
-            }
-            break;
-        }
-        if(midi_param == CC_PAN){
-            for (int k = 0 ; k< ch->getNum(); k++){
-                if (midi_channel == ch->channels_data[k].idx){
-                    ch->channels_data[k].balance = midi_value *1.0 /CC_MAX * 1; //  127 is the max in midi
-                    control_normal(hdsp_card,OUT_CHANNEL,ch->channels_data[k]);
-                    control_solos(hdsp_card,ch);
-                    break;
-                }
-            }
-            break;
-        }
-        if(midi_param == CC_DOWN_ROW){ // bottom row
-            for (int k = 0 ; k< ch->getNum(); k++){
-                if (midi_channel == ch->channels_data[k].idx){
-                    if(midi_value == CC_MAX){
-                        ch->channels_data[midi_channel].mute = true;
-                    } else {
-                        ch->channels_data[midi_channel].mute = false;
-                    }
-                    cout << "mute channel " << midi_channel << " " << ch->channels_data[midi_channel].mute << endl;
-                    control_normal(hdsp_card,OUT_CHANNEL,ch->channels_data[k]);
-                    control_solos(hdsp_card,ch);
-                    break;
-                }
-            }
-            break;
-        }
-        if(midi_param == CC_UP_ROW){ // upper row
-            for (int k = 0 ; k< ch->getNum(); k++){
-                if (midi_channel == ch->channels_data[k].idx){
-                    if(midi_value == CC_MAX){
-                        ch->channels_data[midi_channel].solo = true;
-                    } else {
-                        ch->channels_data[midi_channel].solo = false;
-                    }
-                    control_solos(hdsp_card,ch);
-                    cout << "solo channel " << midi_channel << " " << ch->channels_data[midi_channel].mute << endl;
-                    //                    send_control(hdsp_card,channels[k]);
-                    //                    send_control_solos(hdsp_card,channels);
-                    break;
-                }
-            }
-            break;
-        }
-        break;
-    case SND_SEQ_EVENT_PGMCHANGE:
-        printf("Program change         %2d, program %d\n", ev->data.control.channel, ev->data.control.value);
-        break;
-    case SND_SEQ_EVENT_PITCHBEND:
-        printf("Pitch bend             %2d, value %d\n", ev->data.control.channel, ev->data.control.value);
-        break;
-    case SND_SEQ_EVENT_SYSEX:
-    {
-        unsigned int i;
-        printf("System exclusive          ");
-        for (i = 0; i < ev->data.ext.len; ++i)
-            printf(" %02X", ((unsigned char*)ev->data.ext.ptr)[i]);
-        printf("\n");
-    }
-        break;
-    default:
-        printf("Event type %d\n",  ev->type);
-    }
-}
 
 static void sighandler(int sig){
     stop = 1;
@@ -249,10 +91,9 @@ static void sighandler(int sig){
 
 int main(int argc, char *argv[])
 {
+    Bridge bridge;
     libconfig::Config cfg;
-    Channels channels;
-    MidiController midicontroller;
-    HDSPMixerCard *hdsp_card = NULL;
+
     struct pollfd *pfds = NULL;
     int npfds = 0;
     int err;
@@ -266,8 +107,8 @@ int main(int argc, char *argv[])
     }
 
     // Search and initialize RME card.
-    search_card(&hdsp_card);
-    if (hdsp_card == NULL) {
+    search_card(&bridge.hdsp_card);
+    if (bridge.hdsp_card == NULL) {
         cout << "No RME cards found." << endl;
 #ifdef NO_RME
         exit(EXIT_FAILURE);
@@ -281,54 +122,49 @@ int main(int argc, char *argv[])
         port_in = si;
         libconfig::Setting& so = cfg.lookup("midi_out");
         port_out = so;
+        libconfig::Setting& sm = cfg.lookup("main_channel");
+        bridge.main = sm;
+        libconfig::Setting& sp = cfg.lookup("phones_channel");
+        bridge.phones = sp;
     }
     catch (libconfig::ConfigException& e) {
         cout << "error readind config file" << endl;
         exit(EXIT_FAILURE);
     }
 
-    channels.read(&cfg);
-    midicontroller.parse_ports_out(port_out);
-    midicontroller.parse_ports_in(port_in);
-    midicontroller.connect_ports();
+    bridge.channels.read(&cfg);
+    bridge.midicontroller.parse_ports_out(port_out);
+    bridge.midicontroller.parse_ports_in(port_in);
+    bridge.midicontroller.connect_ports();
 
     signal(SIGINT, sighandler);
     signal(SIGTERM, sighandler);
 
-    npfds = snd_seq_poll_descriptors_count(midicontroller.seq, POLLIN);
+    npfds = snd_seq_poll_descriptors_count(bridge.midicontroller.seq, POLLIN);
     pfds = new pollfd[npfds];
 
-#ifdef NO_RME
-    // reset all to 0.
-    hdsp_card->resetMixer();
-    // restore channels gains from file
-    for (int k = 0 ; k< channels.getNum(); k++){
-        send_control_normal(hdsp_card,OUT_CHANNEL,channels.channels_data[k]);
-    }
-#endif //NO_RME
-    // restore channels midi from file
-    midicontroller.restore_midi(&channels);
+    bridge.restore();
 
     while(true) {
-        snd_seq_poll_descriptors(midicontroller.seq, pfds, npfds, POLLIN);
+        snd_seq_poll_descriptors(bridge.midicontroller.seq, pfds, npfds, POLLIN);
         if (poll(pfds, npfds, -1) < 0){
             break;
         }
         do {
             snd_seq_event_t *event;
-            err = snd_seq_event_input(midicontroller.seq, &event);
+            err = snd_seq_event_input(bridge.midicontroller.seq, &event);
             if (err < 0){
                 break;
             }
             if (event){
-                dump_event(event, &channels,hdsp_card);
+                bridge.dump_event(event);
             }
         } while (err > 0);
         if (stop){
             break;
         }
     }
-    channels.save(&cfg);
+    bridge.channels.save(&cfg);
     cfg.writeFile(argv[1]);
     delete[] pfds;
 

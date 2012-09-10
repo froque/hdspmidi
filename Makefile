@@ -46,11 +46,13 @@ SOURCES       = src/Channel.cpp \
 		src/channelmap.cxx \
 		src/HDSPMixerCard.cxx \
 		src/midicontroller.cpp \
+		src/bridge.cpp \
 		src/midi.cpp 
 OBJECTS       = Channel.o \
 		channelmap.o \
 		HDSPMixerCard.o \
 		midicontroller.o \
+		bridge.o \
 		midi.o
 
 DESTDIR       = 
@@ -110,6 +112,9 @@ Channel.o: src/Channel.cpp src/Channel.h
 
 midicontroller.o: src/midicontroller.cpp src/midicontroller.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o midicontroller.o src/midicontroller.cpp
+
+bridge.o: src/bridge.cpp src/bridge.h
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o bridge.o src/bridge.cpp
 
 channelmap.o: src/channelmap.cxx src/channelmap.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o channelmap.o src/channelmap.cxx

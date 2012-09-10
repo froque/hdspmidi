@@ -116,7 +116,12 @@ void Bridge::dump_event(const snd_seq_event_t *ev)
         if(midi_param == CC_VOL){
             for (int k = 0 ; k< channels.getNum(); k++){
                 if (midi_channel == channels.channels_data[k].idx){
-                    channels.channels_data[k].volume = midi_value * RME_MAX *1.0 /CC_MAX ; // 65536  is the max in the driver. 127 is the max in midi
+                    if (midi_value == 0){
+                        channels.channels_data[k].volume = 0;
+                    } else {
+                        double dB = -LOWER_DB + LOWER_DB * midi_value /CC_MAX;
+                        channels.channels_data[k].volume = ZERO_DB * pow(10,dB/20);
+                    }
                     control_normal(main,channels.channels_data[k]);
                     control_solos();
                     break;

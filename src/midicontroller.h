@@ -10,6 +10,8 @@
 #define CC_DOWN_ROW 11
 #define CC_UP_ROW 14
 
+#define LOWER_DB 65.0
+
 class MidiController
 {
 public:

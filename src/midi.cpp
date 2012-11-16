@@ -110,7 +110,7 @@ int main(int argc, char *argv[])
     search_card(&bridge.hdsp_card);
     if (bridge.hdsp_card == NULL) {
         cout << "No RME cards found." << endl;
-#ifdef NO_RME
+#ifndef NO_RME
         exit(EXIT_FAILURE);
 #endif //NO_RME
     }

@@ -33,7 +33,7 @@ void Bridge::vegas()
 void Bridge::restore(void)
 {
 
-#ifdef NO_RME
+#ifndef NO_RME
     // reset all to 0.
     hdsp_card->resetMixer();
     // restore channels gains from file
@@ -50,20 +50,20 @@ void Bridge::restore(void)
 
 void Bridge::send_control(int dst, struct channel ch, int left_value, int right_value){
     if(ch.input){
-#ifdef NO_RME
+#ifndef NO_RME
         hdsp_card->setInput(ch.left_map, dst,left_value,right_value);
 #endif //NO_RME
         if(ch.stereo){
-#ifdef NO_RME
+#ifndef NO_RME
             hdsp_card->setInput(ch.right_map, dst,left_value,right_value);
 #endif //NO_RME
         }
     } else {
-#ifdef NO_RME
+#ifndef NO_RME
         hdsp_card->setPlayback(ch.left_map, dst,left_value,right_value);
 #endif //NO_RME
         if(ch.stereo){
-#ifdef NO_RME
+#ifndef NO_RME
             hdsp_card->setPlayback(ch.right_map, dst,left_value,right_value);
 #endif //NO_RME
         }

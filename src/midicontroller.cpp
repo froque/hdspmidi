@@ -73,10 +73,15 @@ MidiController::~MidiController()
 
 void MidiController::restore_midi( Channels *ch){
     for(int k=0; k<ch->getNum(); k++){
-        double dB = 20*log(ch->channels_data[k].volume/(ZERO_DB*1.0));
-        double linear = (dB + LOWER_DB)*CC_MAX/LOWER_DB;
-        send_midi_CC(k, CC_VOL,linear);//        send_midi_CC(k, CC_VOL,ch->channels_data[k].volume /RME_MAX * CC_MAX););
+        double linear;
+        if(ch->channels_data[k].volume == 0){
+            linear = 0;
+        } else {
+            double dB = 20*log10(ch->channels_data[k].volume/(ZERO_DB*1.0));
+            linear = (dB + LOWER_DB)*CC_MAX/LOWER_DB;
+        }
 
+        send_midi_CC(k, CC_VOL,linear);
         send_midi_CC(k, CC_PAN,ch->channels_data[k].balance *CC_MAX);
         send_midi_CC(k, CC_DOWN_ROW,ch->channels_data[k].mute? CC_MAX:0);
         send_midi_CC(k, CC_UP_ROW,ch->channels_data[k].solo? CC_MAX:0);

@@ -42,6 +42,7 @@ void Bridge::restore(void)
     }
     control_solos();
 #endif //NO_RME
+    control_onair();
     // restore channels midi from file
     midicontroller.restore_midi(&channels);
 
@@ -104,6 +105,25 @@ void Bridge::control_solos(){
     }
 }
 
+void Bridge::control_onair(){
+    bool g_onair = false;
+
+    // determine if any channel that requires onair is set, because affects others.
+    for (int k=0; k< channels.getNum(); k++){
+        if (channels.channels_data[k].onair == true){
+            if(channels.channels_data[k].volume !=0){
+                g_onair = true;
+            }
+        }
+    }
+
+    if(g_onair == true){
+        relay.on();
+    } else{
+        relay.off();
+    }
+}
+
 void Bridge::dump_event(const snd_seq_event_t *ev)
 {
     int midi_channel,midi_value,midi_param;
@@ -124,6 +144,7 @@ void Bridge::dump_event(const snd_seq_event_t *ev)
                     }
                     control_normal(main,channels.channels_data[k]);
                     control_solos();
+                    control_onair();
                     break;
                 }
             }

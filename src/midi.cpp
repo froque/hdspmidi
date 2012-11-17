@@ -99,6 +99,7 @@ int main(int argc, char *argv[])
     int err;
     const char *port_out;
     const char *port_in;
+    const char *relay_path;
 
     // check if config file was specified
     if (argc!=2){
@@ -122,6 +123,8 @@ int main(int argc, char *argv[])
         port_in = si;
         libconfig::Setting& so = cfg.lookup("midi_out");
         port_out = so;
+        libconfig::Setting& rp = cfg.lookup("relay_path");
+        relay_path = rp;
         libconfig::Setting& sm = cfg.lookup("main_channel");
         bridge.main = sm;
         libconfig::Setting& sp = cfg.lookup("phones_channel");
@@ -136,6 +139,7 @@ int main(int argc, char *argv[])
     bridge.midicontroller.parse_ports_out(port_out);
     bridge.midicontroller.parse_ports_in(port_in);
     bridge.midicontroller.connect_ports();
+    bridge.relay.open(relay_path);
 
     signal(SIGINT, sighandler);
     signal(SIGTERM, sighandler);
@@ -147,9 +151,11 @@ int main(int argc, char *argv[])
 
     while(true) {
         snd_seq_poll_descriptors(bridge.midicontroller.seq, pfds, npfds, POLLIN);
+        // wait for midi events
         if (poll(pfds, npfds, -1) < 0){
             break;
         }
+        // process midi events
         do {
             snd_seq_event_t *event;
             err = snd_seq_event_input(bridge.midicontroller.seq, &event);

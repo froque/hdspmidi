@@ -14,10 +14,11 @@ public:
     bool solo;
     bool stereo;
     bool input;
+    bool onair;
     int left_map;
     int right_map;
-    double volume;
-    double balance;
+    double volume;  // from 0 to ZERO_DB = 32768 (Card maximum)
+    double balance; // from 0 to 1
 };
 
 

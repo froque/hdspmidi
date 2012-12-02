@@ -1,0 +1,64 @@
+pcm_slave.hdsp {
+    pcm {
+        type hw
+        card 1
+    }
+    rate 44100
+    format S32_LE
+    channels 26
+}
+
+pcm_slave.hdsp_dmix {
+    pcm {
+	type dmix
+        ipc_key 1024
+        ipc_key_add_uid true    # add current uid to unique IPC key
+        slave hdsp
+    }
+}
+
+pcm.hdsp_dmix_plug1 {
+    type plug
+    slave hdsp_dmix
+    ttable.0.0 1
+    ttable.1.1 1
+}
+pcm.hdsp_dmix_plug2 {
+    type plug
+    slave hdsp_dmix
+    ttable.0.2 1
+    ttable.1.3 1
+}
+
+pcm.hdsp_dsnoop {
+	type dsnoop
+        ipc_key 1024
+        ipc_key_add_uid true    # add current uid to unique IPC key
+        slave hdsp
+}
+
+pcm.hdsp_capture {
+    type plug
+    slave.pcm {
+        type dsnoop
+        ipc_key 5678291
+        slave {
+            pcm {
+                type hw
+                card "DSP"
+            }
+            format "S32_LE"
+            rate 44100
+            channels 26
+        }
+    }
+    ttable.0.16 1
+    ttable.1.17 1
+}
+pcm.!default {
+    type asym
+    playback.pcm hdsp_dmix_plug2
+    capture.pcm hdsp_capture
+}
+
+#pcm.!default hdsp_dmix_plug2

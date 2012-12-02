@@ -14,6 +14,7 @@ void Channels::print(){
         cout << " stereo " << channels_data[k].stereo;
         cout << " input " << channels_data[k].input;
         cout << " microphone " << channels_data[k].microphone;
+        cout << " active " << channels_data[k].active;
         cout << " left_map " << channels_data[k].left_map;
         cout << " right_map " << channels_data[k].right_map;
         cout << " volume " << channels_data[k].volume;
@@ -31,6 +32,7 @@ bool Channels::read(Config *cfg){
     bool stereo;
     bool input;
     bool microphone;
+    bool active;
     int left_map;
     int right_map;
     double volume;
@@ -50,6 +52,7 @@ bool Channels::read(Config *cfg){
                     sch[k].lookupValue("stereo",stereo) &&
                     sch[k].lookupValue("input",input) &&
                     sch[k].lookupValue("microphone",microphone) &&
+                    sch[k].lookupValue("active",active) &&
                     sch[k].lookupValue("left_map",left_map) &&
                     sch[k].lookupValue("right_map",right_map) &&
                     sch[k].lookupValue("volume",volume) &&
@@ -62,6 +65,7 @@ bool Channels::read(Config *cfg){
                 channels_data[num].stereo = stereo;
                 channels_data[num].input = input;
                 channels_data[num].microphone = microphone;
+                channels_data[num].active = active;
                 channels_data[num].left_map = left_map;
                 channels_data[num].right_map = right_map;
                 channels_data[num].volume = volume;
@@ -103,6 +107,8 @@ bool Channels::save(Config *cfg){
             sinput = channels_data[k].input;
             Setting& smicrophone = sch.add("microphone",Setting::TypeBoolean);
             smicrophone = channels_data[k].microphone;
+            Setting& sactive = sch.add("active",Setting::TypeBoolean);
+            sactive = channels_data[k].active;
             Setting& sleft_map = sch.add("left_map",Setting::TypeInt);
             sleft_map = channels_data[k].left_map;
             Setting& sright_map = sch.add("right_map",Setting::TypeInt);

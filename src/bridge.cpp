@@ -127,13 +127,14 @@ void Bridge::dump_event(const snd_seq_event_t *ev)
                         double dB = -LOWER_DB + LOWER_DB * midi_value /CC_MAX;
                         channels.channels_data[k].volume = ZERO_DB * pow(10,dB/20);
                     }
-
-                    if (channels.channels_data[k].microphone == false){
-                        control_normal(monitors,channels.channels_data[k]);
+                    if (channels.channels_data[k].active){
+                        if (channels.channels_data[k].microphone == false){
+                            control_normal(monitors,channels.channels_data[k]);
+                        }
+                        control_normal(main,channels.channels_data[k]);
+                        control_solos();
+                        control_onair();
                     }
-                    control_normal(main,channels.channels_data[k]);
-                    control_solos();
-                    control_onair();
                     break;
                 }
             }
@@ -144,11 +145,13 @@ void Bridge::dump_event(const snd_seq_event_t *ev)
                 if (midi_channel == channels.channels_data[k].idx){
                     channels.channels_data[k].balance = midi_value *1.0 /CC_MAX * 1; //  127 is the max in midi
 
-                    if (channels.channels_data[k].microphone == false){
-                        control_normal(monitors,channels.channels_data[k]);
+                    if (channels.channels_data[k].active){
+                        if (channels.channels_data[k].microphone == false){
+                            control_normal(monitors,channels.channels_data[k]);
+                        }
+                        control_normal(main,channels.channels_data[k]);
+                        control_solos();
                     }
-                    control_normal(main,channels.channels_data[k]);
-                    control_solos();
                     break;
                 }
             }
@@ -161,11 +164,13 @@ void Bridge::dump_event(const snd_seq_event_t *ev)
 
                     midicontroller.send_midi_CC(k,CC_PAN,CC_MAX/2);
 
-                    if (channels.channels_data[k].microphone == false){
-                        control_normal(monitors,channels.channels_data[k]);
+                    if (channels.channels_data[k].active){
+                        if (channels.channels_data[k].microphone == false){
+                            control_normal(monitors,channels.channels_data[k]);
+                        }
+                        control_normal(main,channels.channels_data[k]);
+                        control_solos();
                     }
-                    control_normal(main,channels.channels_data[k]);
-                    control_solos();
                     break;
                 }
             }
@@ -180,12 +185,14 @@ void Bridge::dump_event(const snd_seq_event_t *ev)
                         channels.channels_data[midi_channel].mute = false;
                     }
 
-                    if (channels.channels_data[k].microphone == false){
-                        control_normal(monitors,channels.channels_data[k]);
+                    if (channels.channels_data[k].active){
+                        if (channels.channels_data[k].microphone == false){
+                            control_normal(monitors,channels.channels_data[k]);
+                        }
+                        control_normal(main,channels.channels_data[k]);
+                        control_solos();
+                        control_onair();
                     }
-                    control_normal(main,channels.channels_data[k]);
-                    control_solos();
-                    control_onair();
                     break;
                 }
             }
@@ -199,8 +206,9 @@ void Bridge::dump_event(const snd_seq_event_t *ev)
                     } else {
                         channels.channels_data[midi_channel].solo = false;
                     }
-
-                    control_solos();
+                    if (channels.channels_data[k].active){
+                        control_solos();
+                    }
                     break;
                 }
             }

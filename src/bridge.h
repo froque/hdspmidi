@@ -25,6 +25,7 @@ public:
     Relay relay;
     int phones;
     int main;
+    int monitors;
 };
 
 #endif // BRIDGE_H

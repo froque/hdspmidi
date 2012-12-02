@@ -14,7 +14,7 @@ public:
     bool solo;
     bool stereo;
     bool input;
-    bool onair;
+    bool microphone;
     int left_map;
     int right_map;
     double volume;  // from 0 to ZERO_DB = 32768 (Card maximum)

@@ -127,6 +127,8 @@ int main(int argc, char *argv[])
         relay_path = rp;
         libconfig::Setting& sm = cfg.lookup("main_channel");
         bridge.main = sm;
+        libconfig::Setting& smon = cfg.lookup("monitors_channel");
+        bridge.monitors = smon;
         libconfig::Setting& sp = cfg.lookup("phones_channel");
         bridge.phones = sp;
     }

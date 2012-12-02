@@ -93,7 +93,7 @@ void Bridge::control_solos(){
     if(gsolo == true){
         for (int k=0; k< channels.getNum(); k++){
             if(channels.channels_data[k].solo == true){
-                send_control(phones,channels.channels_data[k],ZERO_DB,ZERO_DB);
+                send_control(phones,channels.channels_data[k],ZERO_DB/2,ZERO_DB/2);
             } else {
                 send_control(phones,channels.channels_data[k],0,0);
             }
@@ -110,8 +110,8 @@ void Bridge::control_onair(){
 
     // determine if any channel that requires onair is set, because affects others.
     for (int k=0; k< channels.getNum(); k++){
-        if (channels.channels_data[k].onair == true){
-            if(channels.channels_data[k].volume !=0){
+        if (channels.channels_data[k].microphone == true){
+            if(channels.channels_data[k].volume !=0 && channels.channels_data[k].mute == false){
                 g_onair = true;
             }
         }
@@ -142,6 +142,10 @@ void Bridge::dump_event(const snd_seq_event_t *ev)
                         double dB = -LOWER_DB + LOWER_DB * midi_value /CC_MAX;
                         channels.channels_data[k].volume = ZERO_DB * pow(10,dB/20);
                     }
+
+                    if (channels.channels_data[k].microphone == false){
+                        control_normal(monitors,channels.channels_data[k]);
+                    }
                     control_normal(main,channels.channels_data[k]);
                     control_solos();
                     control_onair();
@@ -154,6 +158,27 @@ void Bridge::dump_event(const snd_seq_event_t *ev)
             for (int k = 0 ; k< channels.getNum(); k++){
                 if (midi_channel == channels.channels_data[k].idx){
                     channels.channels_data[k].balance = midi_value *1.0 /CC_MAX * 1; //  127 is the max in midi
+
+                    if (channels.channels_data[k].microphone == false){
+                        control_normal(monitors,channels.channels_data[k]);
+                    }
+                    control_normal(main,channels.channels_data[k]);
+                    control_solos();
+                    break;
+                }
+            }
+            break;
+        }
+        if(midi_param == CC_PAN_CENTER){
+            for (int k = 0 ; k< channels.getNum(); k++){
+                if (midi_channel == channels.channels_data[k].idx){
+                    channels.channels_data[k].balance = 0.5; //
+
+                    midicontroller.send_midi_CC(k,CC_PAN,CC_MAX/2);
+
+                    if (channels.channels_data[k].microphone == false){
+                        control_normal(monitors,channels.channels_data[k]);
+                    }
                     control_normal(main,channels.channels_data[k]);
                     control_solos();
                     break;
@@ -169,8 +194,13 @@ void Bridge::dump_event(const snd_seq_event_t *ev)
                     } else {
                         channels.channels_data[midi_channel].mute = false;
                     }
+
+                    if (channels.channels_data[k].microphone == false){
+                        control_normal(monitors,channels.channels_data[k]);
+                    }
                     control_normal(main,channels.channels_data[k]);
                     control_solos();
+                    control_onair();
                     break;
                 }
             }
@@ -184,6 +214,7 @@ void Bridge::dump_event(const snd_seq_event_t *ev)
                     } else {
                         channels.channels_data[midi_channel].solo = false;
                     }
+
                     control_solos();
                     break;
                 }
@@ -201,9 +232,11 @@ void Bridge::dump_event(const snd_seq_event_t *ev)
     {
         unsigned int i;
         printf("System exclusive          ");
-        for (i = 0; i < ev->data.ext.len; ++i)
+        for (i = 0; i < ev->data.ext.len; ++i){
             printf(" %02X", ((unsigned char*)ev->data.ext.ptr)[i]);
+        }
         printf("\n");
+
     }
         break;
     default:

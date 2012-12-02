@@ -9,6 +9,7 @@
 #define CC_PAN 10
 #define CC_DOWN_ROW 11
 #define CC_UP_ROW 14
+#define CC_PAN_CENTER 16
 
 #define LOWER_DB 65.0
 

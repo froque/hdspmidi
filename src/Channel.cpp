@@ -13,7 +13,7 @@ void Channels::print(){
         cout << " solo " << channels_data[k].solo;
         cout << " stereo " << channels_data[k].stereo;
         cout << " input " << channels_data[k].input;
-        cout << " onair " << channels_data[k].onair;
+        cout << " microphone " << channels_data[k].microphone;
         cout << " left_map " << channels_data[k].left_map;
         cout << " right_map " << channels_data[k].right_map;
         cout << " volume " << channels_data[k].volume;
@@ -30,7 +30,7 @@ bool Channels::read(Config *cfg){
     bool solo;
     bool stereo;
     bool input;
-    bool onair;
+    bool microphone;
     int left_map;
     int right_map;
     double volume;
@@ -49,7 +49,7 @@ bool Channels::read(Config *cfg){
                     sch[k].lookupValue("solo",solo) &&
                     sch[k].lookupValue("stereo",stereo) &&
                     sch[k].lookupValue("input",input) &&
-                    sch[k].lookupValue("onair",onair) &&
+                    sch[k].lookupValue("microphone",microphone) &&
                     sch[k].lookupValue("left_map",left_map) &&
                     sch[k].lookupValue("right_map",right_map) &&
                     sch[k].lookupValue("volume",volume) &&
@@ -61,7 +61,7 @@ bool Channels::read(Config *cfg){
                 channels_data[num].solo = solo;
                 channels_data[num].stereo = stereo;
                 channels_data[num].input = input;
-                channels_data[num].onair = onair;
+                channels_data[num].microphone = microphone;
                 channels_data[num].left_map = left_map;
                 channels_data[num].right_map = right_map;
                 channels_data[num].volume = volume;
@@ -101,8 +101,8 @@ bool Channels::save(Config *cfg){
             sstereo = channels_data[k].stereo;
             Setting& sinput = sch.add("input",Setting::TypeBoolean);
             sinput = channels_data[k].input;
-            Setting& sonair = sch.add("onair",Setting::TypeBoolean);
-            sonair = channels_data[k].onair;
+            Setting& smicrophone = sch.add("microphone",Setting::TypeBoolean);
+            smicrophone = channels_data[k].microphone;
             Setting& sleft_map = sch.add("left_map",Setting::TypeInt);
             sleft_map = channels_data[k].left_map;
             Setting& sright_map = sch.add("right_map",Setting::TypeInt);

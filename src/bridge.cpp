@@ -7,27 +7,12 @@ using namespace std;
 Bridge::Bridge()
 {
     hdsp_card = NULL;
+    vegas = 0;
 }
 
 Bridge::~Bridge()
 {
     delete hdsp_card;
-}
-
-void Bridge::vegas()
-{
-    bool b = false;
-    for (double phase = 0; phase < 5*2*3.14 ; phase +=0.2 ){
-        for (int k=0;k<8;k++){
-            midicontroller.send_midi_CC(k,CC_VOL,CC_MAX/2.0 * sin(2*3.14*k/8 + phase) + CC_MAX/2.0);
-            midicontroller.send_midi_CC(k,CC_PAN,CC_MAX/2.0 * sin(2*3.14*k/8 + phase) + CC_MAX/2.0);
-            midicontroller.send_midi_CC(k,CC_DOWN_ROW,b?CC_MAX:0);
-            midicontroller.send_midi_CC(k,CC_UP_ROW,b?0:CC_MAX);
-            b = !b;
-            usleep(5000);
-        }
-        b = !b;
-    }
 }
 
 void Bridge::restore(void)
@@ -230,16 +215,28 @@ void Bridge::dump_event(const snd_seq_event_t *ev)
         break;
     case SND_SEQ_EVENT_SYSEX:
     {
+        unsigned char vegas_key1[]={0xF0,0x7F,0x7F,0x06,0x04,0xF7};
         unsigned int i;
         printf("System exclusive          ");
         for (i = 0; i < ev->data.ext.len; ++i){
             printf(" %02X", ((unsigned char*)ev->data.ext.ptr)[i]);
         }
         printf("\n");
-
+        if ( memcmp(vegas_key1,ev->data.ext.ptr,6) == 0 ){
+            vegas++;
+        } else {
+            vegas = 0;
+        }
+        if(vegas == 5){
+            vegas = 0;
+            midicontroller.vegas();
+            midicontroller.restore_midi(&channels);
+        }
+        return;
     }
         break;
     default:
         printf("Event type %d\n",  ev->type);
     }
+    vegas = 0;
 }

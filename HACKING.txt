@@ -3,6 +3,7 @@
 - Call Vegas Mode somehow
 - change Vegas mode to cycle time, not phase
 
+- lidar com faders não usados
 - add .asoundrc files to git
 
 - document preset on BCF2000

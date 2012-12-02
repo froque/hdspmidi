@@ -22,14 +22,11 @@
 #ifndef HDSPMixerCard_H
 #define HDSPMixerCard_H
 
-#include <stdlib.h>
-#include <stdio.h>
 #include <string>
-#include <sys/ioctl.h>
 #include <alsa/asoundlib.h>
 #include <alsa/sound/hdsp.h>
 #include <alsa/sound/hdspm.h>
-#include "channelmap.h"
+
 
 /*! \bug temporary workaround until hdsp.h (HDSP_IO_Type gets fixed */
 #ifndef RPM
@@ -95,6 +92,8 @@ public:
     void getPeakRms(hdsp_peak_rms_t *hdsp_peak_rms);            /*!< updates Peak and RMS values for non-MADI devices */
     void setInput(int in_idx, int out_idx, int left_value,int right_value);
     void setPlayback(int in_idx, int out_idx, int left_value,int right_value);
+
+    static void search_card(HDSPMixerCard **hdsp_card);
 };
 
 #endif

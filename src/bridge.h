@@ -11,7 +11,7 @@ class Bridge
 public:
     Bridge();
     ~Bridge();
-    void vegas();
+    int vegas;
     void restore(void);
     void send_control(int dst, struct channel ch, int left_value, int right_value);
     void control_normal(int dst, struct channel ch);
@@ -25,6 +25,7 @@ public:
     Relay relay;
     int phones;
     int main;
+    int monitors;
 };
 
 #endif // BRIDGE_H

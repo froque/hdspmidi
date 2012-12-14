@@ -23,6 +23,56 @@
 
 #pragma implementation
 #include "HDSPMixerCard.h"
+#include <string>
+#include <sys/ioctl.h>
+#include "channelmap.h"
+
+void HDSPMixerCard::search_card(HDSPMixerCard **hdsp_card){
+    char *name, *shortname;
+    int card = -1;;
+
+    while (snd_card_next(&card) >= 0) {
+        if (card < 0) {
+            break;
+        }
+        snd_card_get_longname(card, &name);
+        snd_card_get_name(card, &shortname);
+        if (!strncmp(name, "RME Hammerfall DSP + Multiface", 30)) {
+            *hdsp_card = new HDSPMixerCard(Multiface, card, shortname);
+            break;
+        } else if (!strncmp(name, "RME Hammerfall DSP + Digiface", 29)) {
+            *hdsp_card = new HDSPMixerCard(Digiface, card, shortname);
+            break;
+        } else if (!strncmp(name, "RME Hammerfall DSP + RPM", 24)) {
+            *hdsp_card = new HDSPMixerCard(RPM, card, shortname);
+            break;
+        } else if (!strncmp(name, "RME Hammerfall HDSP 9652", 24)) {
+            *hdsp_card = new HDSPMixerCard(H9652, card, shortname);
+            break;
+        } else if (!strncmp(name, "RME Hammerfall HDSP 9632", 24)) {
+            *hdsp_card = new HDSPMixerCard(H9632, card, shortname);
+            break;
+        } else if (!strncmp(name, "RME MADIface", 12)) {
+            *hdsp_card = new HDSPMixerCard(HDSPeMADI, card, shortname);
+            break;
+        } else if (!strncmp(name, "RME MADI", 8)) {
+            *hdsp_card = new HDSPMixerCard(HDSPeMADI, card, shortname);
+            break;
+        } else if (!strncmp(name, "RME AES32", 8)) {
+            *hdsp_card = new HDSPMixerCard(HDSP_AES, card, shortname);
+            break;
+        } else if (!strncmp(name, "RME RayDAT", 10)) {
+            *hdsp_card = new HDSPMixerCard(HDSPeRayDAT, card, shortname);
+            break;
+        } else if (!strncmp(name, "RME AIO", 7)) {
+            *hdsp_card = new HDSPMixerCard(HDSPeAIO, card, shortname);
+            break;
+        } else if (!strncmp(name, "RME Hammerfall DSP", 18)) {
+            fprintf(stderr, "Uninitialized HDSP card found.\nUse hdsploader to upload configuration data to the card.\n");
+        }
+    }
+    free(name);
+}
 
 static void alsactl_cb(snd_async_handler_t *handler)
 {

@@ -9,6 +9,7 @@
 #define CC_PAN 10
 #define CC_DOWN_ROW 11
 #define CC_UP_ROW 14
+#define CC_PAN_CENTER 16
 
 #define LOWER_DB 65.0
 
@@ -22,6 +23,7 @@ public:
     void connect_ports();
     void parse_ports_in( const char *arg);
     void parse_ports_out( const char *arg);
+    void vegas();
     snd_seq_t *seq;
 private:
     int parse_ports(snd_seq_addr_t **ports, const char *arg);

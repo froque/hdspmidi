@@ -23,7 +23,6 @@
 #include <stdarg.h>
 #include <string.h>
 #include <signal.h>
-#include <getopt.h>
 #include <sys/poll.h>
 #include <alsa/asoundlib.h>
 #include "HDSPMixerCard.h"

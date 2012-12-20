@@ -61,8 +61,8 @@ int main(int argc, char *argv[])
     // Search and initialize RME card.
     HDSPMixerCard::search_card(&bridge.hdsp_card);
     if (bridge.hdsp_card == NULL) {
-        cout << "No RME cards found." << endl;
 #ifndef NO_RME
+        cout << "No RME cards found." << endl;
         exit(EXIT_FAILURE);
 #endif //NO_RME
     }
@@ -89,9 +89,19 @@ int main(int argc, char *argv[])
     }
 
     bridge.channels.read(&cfg);
-    bridge.midicontroller.parse_ports_out(port_out);
-    bridge.midicontroller.parse_ports_in(port_in);
-    bridge.midicontroller.connect_ports();
+    try{
+        bridge.midicontroller.parse_ports_out(port_out);
+        bridge.midicontroller.parse_ports_in(port_in);
+    } catch (exception& e){
+        cout << "Problem parsing MIDI ports." << " In: " << port_in << ". Out: " << port_out << "." << endl;
+        exit(EXIT_FAILURE);
+    }
+    try{
+        bridge.midicontroller.connect_ports();
+    } catch (exception& e){
+        cout << "Problem connecting to MIDI ports." << " In: " << port_in << ". Out: " << port_out << "." << endl;
+        exit(EXIT_FAILURE);
+    }
     bridge.relay.open(relay_path);
 
     signal(SIGINT, sighandler);

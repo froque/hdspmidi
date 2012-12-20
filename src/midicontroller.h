@@ -26,11 +26,9 @@ public:
     void vegas();
     snd_seq_t *seq;
 private:
-    int parse_ports(snd_seq_addr_t **ports, const char *arg);
-    snd_seq_addr_t *ports_out;
-    snd_seq_addr_t *ports_in;
-    int port_count_out;
-    int port_count_in;
+    void parse_ports(snd_seq_addr_t *port, const char *arg);
+    snd_seq_addr_t ports_out;
+    snd_seq_addr_t ports_in;
     int receiver;
     int sender;
 };

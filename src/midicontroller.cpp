@@ -63,18 +63,19 @@ void MidiController::send_midi_CC(int chn, int param, int value )  {
     }
 }
 
-void MidiController::connect_ports(){
+bool MidiController::connect_ports(){
     int err;
 
     err = snd_seq_connect_from(seq, receiver, ports_out.client, ports_out.port);
     if (err < 0){
-        throw std::exception();
+        return false;
     }
 
     err = snd_seq_connect_to(seq, sender, ports_in.client, ports_in.port);
     if (err < 0){
-        throw std::exception();
+        return false;
     }
+    return true;
 }
 
 void MidiController::parse_ports_in( const char *arg){

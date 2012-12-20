@@ -96,9 +96,7 @@ int main(int argc, char *argv[])
         cout << "Problem parsing MIDI ports." << " In: " << port_in << ". Out: " << port_out << "." << endl;
         exit(EXIT_FAILURE);
     }
-    try{
-        bridge.midicontroller.connect_ports();
-    } catch (exception& e){
+    if (bridge.midicontroller.connect_ports() == false) {
         cout << "Problem connecting to MIDI ports." << " In: " << port_in << ". Out: " << port_out << "." << endl;
         exit(EXIT_FAILURE);
     }

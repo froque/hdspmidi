@@ -243,6 +243,12 @@ void Bridge::dump_event(const snd_seq_event_t *ev)
         return;
     }
         break;
+    case SND_SEQ_EVENT_PORT_UNSUBSCRIBED:
+        while (midicontroller.connect_ports() == false) {
+            sleep(1);
+        }
+        midicontroller.restore_midi(&channels);
+        break;
     default:
         printf("Event type %d\n",  ev->type);
     }

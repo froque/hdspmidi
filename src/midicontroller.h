@@ -20,7 +20,7 @@ public:
     ~MidiController();
     void restore_midi( Channels *ch);
     void send_midi_CC(int chn, int param,int value );
-    void connect_ports();
+    bool connect_ports();
     void parse_ports_in( const char *arg);
     void parse_ports_out( const char *arg);
     void vegas();

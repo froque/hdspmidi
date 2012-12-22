@@ -107,11 +107,12 @@ int main(int argc, char *argv[])
 
     npfds = snd_seq_poll_descriptors_count(bridge.midicontroller.seq, POLLIN);
     pfds = new pollfd[npfds];
+    snd_seq_poll_descriptors(bridge.midicontroller.seq, pfds, npfds, POLLIN);
 
     bridge.restore();
 
-    while(true) {
-        snd_seq_poll_descriptors(bridge.midicontroller.seq, pfds, npfds, POLLIN);
+    while(stop == 0) {
+
         // wait for midi events
         if (poll(pfds, npfds, -1) < 0){
             break;
@@ -127,10 +128,8 @@ int main(int argc, char *argv[])
                 bridge.dump_event(event);
             }
         } while (err > 0);
-        if (stop){
-            break;
-        }
     }
+
     bridge.channels.save(&cfg);
     cfg.writeFile(argv[1]);
     delete[] pfds;

@@ -37,7 +37,9 @@ using namespace std;
 static volatile sig_atomic_t stop = 0;
 
 static void sighandler(int sig){
-    stop = 1;
+    if (sig == SIGINT || sig == SIGTERM){
+        stop = 1;
+    }
 }
 
 int main(int argc, char *argv[])
@@ -106,17 +108,29 @@ int main(int argc, char *argv[])
     signal(SIGTERM, sighandler);
 
     npfds = snd_seq_poll_descriptors_count(bridge.midicontroller.seq, POLLIN);
+    // +1 for udev due to relay
+    npfds++;
     pfds = new pollfd[npfds];
-    snd_seq_poll_descriptors(bridge.midicontroller.seq, pfds, npfds, POLLIN);
+    snd_seq_poll_descriptors(bridge.midicontroller.seq, pfds, npfds-1, POLLIN);
+    pfds[npfds-1].fd = bridge.relay.get_fd();
+    pfds[npfds-1].events = POLLIN;
 
+    // restore BCF2000 and relay
     bridge.restore();
 
     while(stop == 0) {
-
-        // wait for midi events
+        // wait for midi events and udev events
         if (poll(pfds, npfds, -1) < 0){
             break;
         }
+
+        // process udev events
+        if (pfds[npfds-1].revents && POLLIN ){
+            if(bridge.relay.reconnect()){
+                bridge.control_onair();
+            }
+        }
+
         // process midi events
         do {
             snd_seq_event_t *event;

@@ -1,0 +1,16 @@
+
+BCF 2000 Preset in use
+
+Everything uses Control Change messages:
+
+Faders uses parameter 7, and the channel (0-7) corresponds to each fader
+
+Potentiometers (push encoders on top) uses parameter 10, and the channel (0-7) corresponds to each potentiometer
+
+Push encoders uses parameter 16, and the channel (0-7) corresponds to each push encoder. 
+
+Bottom row of buttons uses parameter 11, and the channel (0-7) corresponds to each button
+Top row of buttons uses parameter 14, and the channel (0-7) corresponds to each button
+
+ENCODER GROUP keys, STORE, LEARN, EDIT, RESET and PRESET keys were disabled using http://linux-sound.org/bcedit-unofficial/
+

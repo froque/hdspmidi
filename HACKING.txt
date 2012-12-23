@@ -1,7 +1,4 @@
 
-- handle reconnect of BCF2000 and USB Relay One
-
-- document preset on BCF2000
 - document better relation of fader 0-127 to volume 0-32768
 
 FEITO:
@@ -13,3 +10,5 @@ FEITO:
 - move search_card to file HDSPMixerCard as static
 - add .asoundrc files to git
 - lidar com faders não usados
+- document preset on BCF2000
+- handle reconnect of BCF2000 and USB Relay One
